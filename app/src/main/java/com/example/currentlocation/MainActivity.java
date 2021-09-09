@@ -3,6 +3,7 @@ package com.example.currentlocation;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SearchView;
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.FragmentActivity;
 
@@ -11,6 +12,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Looper;
@@ -35,10 +38,16 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
 public class MainActivity extends FragmentActivity {
 
+    private SearchView searchView;
     private LocationRequest locationRequest;
     private Double latitude,longitude;
+    private GoogleMap map;
     private static final int REQUEST_C0DE_LOCATION_PERMISSION = 1001;
     private static final int REQUEST_CODE_CHECK_GPS = 1002;
 
@@ -46,7 +55,31 @@ public class MainActivity extends FragmentActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        searchView = findViewById(R.id.searchView);
         getCurrentLocation();
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                String location = searchView.getQuery().toString();
+                Geocoder geocoder = new Geocoder(MainActivity.this);
+                List<Address> addresses = new ArrayList<>();
+                try {
+                    addresses = geocoder.getFromLocationName(location,1);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                Address address = addresses.get(0);
+                LatLng latLng = new LatLng(address.getLatitude(),address.getLongitude());
+                map.addMarker(new MarkerOptions().position(latLng).title(location));
+                map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng,10));
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                return false;
+            }
+        });
     }
 
     private void getCurrentLocation() {
@@ -78,6 +111,7 @@ public class MainActivity extends FragmentActivity {
                                             .findFragmentById(R.id.googleMap);
                                     assert mapFragment != null;
                                     mapFragment.getMapAsync(googleMap -> {
+                                        map = googleMap;
                                         LatLng latLng = new LatLng(latitude,longitude);
                                         MarkerOptions markerOptions = new MarkerOptions().position(latLng)
                                                 .title("Your Location");
